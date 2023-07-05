@@ -3,14 +3,14 @@
 # Compatible system: CentOS6
 # Author:Jankin
 
-# 配置区：
-# 管理员账号
+# Configuration area:
+# Administrator account
 username="superuser"
 
-# ssh端口
+# ssh port
 ssh_port="1024"
 
-#程序区：
+#Program area:
 #shell color
 red_color="\E[0;31m"
 RED_color="\E[1;31m"
@@ -31,121 +31,123 @@ CORRECT_status="${GREEN_color}[+]${default_color}"
 error_status="${red_color}[-]${default_color}"
 ERROR_status="${RED_color}[-]${default_color}"
 
-echo -e "${CHECK_status} 开始进行Linux安全基线检测...\n"
+echo -e "${CHECK_status} Starting a Linux security baseline test... \n"
 
-# 输出当前Linux信息
-echo -e "${FINISH_status} 当前Linux信息："
+# Output current Linux information
+echo -e "${FINISH_status} Current Linux information:"
 current_user=`whoami`
-echo "主机名：`hostname`"
-echo "当前用户：${current_user}"
-echo -e "当前IP：`/sbin/ifconfig | grep 'inet addr' | sed 's/^.*addr://' | sed 's/ Bcast.*$//' | sed '/127.*/d'`\n"
+echo "Host Name：`hostname`"
+echo "Current Users：${current_user}"
+echo -e "Current IP：`/sbin/ifconfig | grep 'inet addr' | sed 's/^.*addr://' | sed 's/ Bcast.*$//' | sed '/127.*/d'`\n"
 
-# 判断是否为root
+# Determine if it is root
 if [ $current_user != 'root' ]
 then
-	echo -e "${ERROR_status} 请使用root用户执行脚本！"
+	echo -e "${ERROR_status} Please execute the script as root user！"
 	exit 123
 fi
 
-# 检测函数，下面的程序使用grep去检测，check()函数则通过$?返回状态判断是否符合条件
+# The following program uses grep to detect,
+# while the check() function uses $? return status
+# to determine whether the conditions are met
 function check(){
 	if [ $? == 0 ]
 	then
-		echo -e "${correct_status} $1符合要求"
+		echo -e "${correct_status} $1Meets the requirements"
 	else
-		echo -e "${error_status} $1不符合要求"
+		echo -e "${error_status} $1Does not meet the requirements"
 	fi
 }
 
-# 账号口令检测
-echo -e "${CHECK_status} 正在进行账号口令检测..."
+# Account password detection
+echo -e "${CHECK_status} Account password detection in progress..."
 
-# 1、口令复杂度
+# 1. Complexity of password
 grep '^password\s\+requisite\s\+pam_cracklib.so\s\+.*minlen=8' /etc/pam.d/system-auth-ac | grep 'minclass=3' > /dev/null
-check 口令复杂度
+check Password Complexity
 
-# 2、口令生存周期
+# 2. Password lifecycle
 grep '^PASS_MAX_DAYS\s\+90' /etc/login.defs > /dev/null
-check 口令生存周期
+check Password lifecycle
 chage -l root | grep 'Maximum number of days between password change\s\+:\s\+90' > /dev/null
-check root用户口令生存周期
-echo -e "${FINISH_status} 已完成账号口令检测"
+check root User password lifecycle
+echo -e "${FINISH_status} Completed account password detection"
 echo  "----------------------------------"
 
-# 权限检测
-echo -e "${CHECK_status} 正在进行权限检测..."
-# 检查/etc/passwd、/etc/group、/etc/profile文件所属者、所有组是否为root，权限是否为644
+# Permission detection
+echo -e "${CHECK_status} Permission detection in progress..."
+# Check /etc/passwd, /etc/group and /etc/profile whether the file owner and all groups are root and whether the permission is 644
 for f in /etc/passwd /etc/group /etc/profile
 do
 	 ls -l ${f} | grep 'root root' | grep 'rw-r--r--' > /dev/null
-	check ${f}文件权限
+	check ${f} File Permissions
 done
-# 检查/etc/shadow、/etc/gshadow文件所属者、所有组是否为root，权限是否为000
+# Check /etc/shadow, /etc/gshadow Whether the file owner and all groups are root and whether the permission is 000
 for f in /etc/shadow /etc/gshadow
 do
 	 ls -l ${f} | grep 'root root' | grep -- "---------" > /dev/null
-	check ${f}文件权限
+	check ${f} File Permissions
 done
-# 检查/tmp目录所属者、所有组是否为root，权限是否为750
+# Check if the /tmp directory belongs to root, all groups and permissions are 750
 ls -ld /tmp/ | grep 'root root' | grep 'rwxr-x---' > /dev/null
-check /tmp目录权限
-# 检查/var/log/目录所属者、所有组是否为root，权限是否为740
+check /tmp Directory Permissions
+# Check that the /var/log/ directory belongs to root, all groups, and that permissions are 740
 ls -ld /var/log/ | grep 'root root' | grep 'rwxr-----' > /dev/null
-check /var/log目录权限
-# 检查/boot/grub/grub.conf文件所属者、所有组是否为root，权限是否为600
+check /var/log Directory Permissions
+# Check if the /boot/grub/grub.conf file is owned by root, all groups are root, and the permissions are 600
 ls -l /boot/grub/grub.conf | grep 'root root' | grep 'rw-------' > /dev/null
-check /boot/grub/grub.conf文件权限
-echo -e "${FINISH_status} 已完成权限检测"
+check /boot/grub/grub.conf File Permissions
+echo -e "${FINISH_status} Permission detection completed"
 echo  "----------------------------------"
 
-# 日志审计检测
-echo -e "${CHECK_status} 正在进行日志审计服务检测..."
+# Log audit detection
+echo -e "${CHECK_status} Ongoing log audit service detection..."
 service rsyslog status > /dev/null
-check "rsyslog 服务状态"
+check "rsyslog Service Status"
 service auditd status > /dev/null
-check "auditd 服务状态"
-echo -e "${FINISH_status} 已完成日志审计服务检测"
+check "auditd Service Status"
+echo -e "${FINISH_status} Completed log audit service detection"
 echo  "----------------------------------"
 
-# 协议安全检测
-echo -e "${CHECK_status} 正在进行协议安全检测..."
-# 协议安全检测_SSH检测
-echo -e "${check_status} 正在检测SSH协议..."
+# Protocol Security Testing
+echo -e "${CHECK_status} Protocol security testing in progress..."
+# Protocol Security Inspection_SSH Inspection
+echo -e "${check_status} SSH protocol is being detected..."
 grep "^Port $ssh_port" /etc/ssh/sshd_config > /dev/null
-check SSH端口号
+check SSH Port number
 grep "^Protocol 2" /etc/ssh/sshd_config > /dev/null
-check SSH安全协议
+check SSH Security protocols
 grep "^PermitEmptyPasswords no" /etc/ssh/sshd_config > /dev/null
-check SSH空密码限制
+check SSH Empty password restriction
 grep "^PermitRootLogin no" /etc/ssh/sshd_config > /dev/null
-check SSH禁止root登录
+check SSH Disable root login
 grep "^MaxAuthTries 5" /etc/ssh/sshd_config > /dev/null
-check SSH登录失败次数限制
+check SSH Limit on the number of failed login attempts
 grep "^ClientAliveInterval 600" /etc/ssh/sshd_config > /dev/null
-check SSH超时退出登录参数ClientAliveInterval配置
+check SSH Timeout logout parameter ClientAliveInterval configuration
 grep "^ClientAliveCountMax 0" /etc/ssh/sshd_config > /dev/null
-check SSH超时退出登录参数ClientAliveCountMax配置
+check SSH timeout logout parameter ClientAliveCountMax configuration
 grep "^LogLevel INFO" /etc/ssh/sshd_config > /dev/null
-check SSH日志级别配置
-echo -e "${FINISH_status} 已完成协议安全检测"
+check SSH log level configuration
+echo -e "${FINISH_status} Completed protocol security testing"
 echo  "----------------------------------"
 
-# 系统安全检测
-# 1、限制用户su到root，仅允许管理员账号su到root
-echo -e "${CHECK_status} 正在进行系统安全检测..."
+# System security testing
+# 1. Restrict users to su to root and only allow admin accounts to su to root
+echo -e "${CHECK_status} System security testing in progress..."
 grep "^wheel.*${username}" /etc/group > /dev/null
-check ${username}加入到wheel组
+check ${username} Add to wheel group
 grep "^auth\s\+required\s\+pam_wheel.so" /etc/pam.d/su > /dev/null
-check /etc/pam.d/su文件配置
+check /etc/pam.d/su File Configuration
 grep "^SU_WHEEL_ONLY yes" /etc/login.defs > /dev/null
-check /etc/login.defs文件SU_WHEEL_ONLY参数配置
-echo -e "${finish_status} 限制用户su到root检测完毕"
+check /etc/login.defs File SU_WHEEL_ONLY parameter configuration
+echo -e "${finish_status} Restrict user su to root detection complete"
 
-# 2、GRUB加密
+# 2. GRUB Encryption
 grep "password ${password}" /boot/grub/grub.conf > /dev/null
-check GRUB加密
-echo -e "${finish_status} GRUB加密检测完毕"
-echo -e "${FINISH_status} 已完成系统安全检测"
+check GRUB Encryption
+echo -e "${finish_status} GRUB encryption detection complete"
+echo -e "${FINISH_status} System security testing has been completed"
 echo  "----------------------------------"
 
-echo -e "${FINISH_status} 已完成Linux安全基线检测"
+echo -e "${FINISH_status} Completed Linux security baseline testing"
