@@ -1,7 +1,7 @@
 # Linux_Security_Check
 
-Linux安全基线检测与加固
+Linux security baseline detection and hardening
 
-Linux_Security_Check.sh为检测程序
+Linux_Security_Check.sh is the checker
 
-Linux_Security_Hardening.sh为加固程序
+Linux_Security_Hardening.sh is the hardening program
